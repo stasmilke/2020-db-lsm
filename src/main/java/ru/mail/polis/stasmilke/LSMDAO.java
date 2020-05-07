@@ -36,7 +36,7 @@ public class LSMDAO implements DAO {
         this.memTable = new MemTable();
         this.ssTables = new TreeMap<>();
         try(final Stream<Path> files = Files.list(storage.toPath())) {
-            files.filter(path -> path.toAbsolutePath().endsWith(SUFFIX)).forEach(file -> {
+            files.filter(path -> path.toString().endsWith(SUFFIX)).forEach(file -> {
                 try {
                     final String name = file.getFileName().toString();
                     final int generation = Integer.parseInt(name.substring(0, name.indexOf(SUFFIX)));
@@ -73,6 +73,7 @@ public class LSMDAO implements DAO {
 
     @Override
     public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) throws IOException {
+        memTable.upsert(key, value);
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }

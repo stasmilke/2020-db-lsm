@@ -39,7 +39,7 @@ final class Value implements Comparable<Value> {
     }
 
     public long sizeInBytes() {
-        return Long.BYTES + (data.isPresent() ? data.get().capacity() : 0L);
+        return Long.BYTES + (data.isPresent() ? data.get().remaining() : 0L);
     }
 
     public long getTimestamp() {

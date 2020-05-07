@@ -28,6 +28,8 @@ final class MemTable implements Table {
         final Value newValue = new Value(value, System.currentTimeMillis());
         if (oldValue != null) {
             sizeInBytes -= oldValue.sizeInBytes();
+        } else {
+            sizeInBytes += key.remaining();
         }
         sizeInBytes += newValue.sizeInBytes();
         sortedMap.put(key, newValue);
