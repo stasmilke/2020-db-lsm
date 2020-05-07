@@ -1,5 +1,6 @@
 package ru.mail.polis.stasmilke;
 
+import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -15,11 +16,8 @@ final class MemTable implements Table {
     @NotNull
     @Override
     public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
-        return sortedMap.tailMap(from)
-                .entrySet()
-                .stream()
-                .map(x -> new Cell(x.getKey(), x.getValue()))
-                .iterator();
+        return Iterators.transform(sortedMap.tailMap(from).entrySet().iterator(),
+                x -> new Cell(x.getKey(), x.getValue()));
     }
 
     @Override

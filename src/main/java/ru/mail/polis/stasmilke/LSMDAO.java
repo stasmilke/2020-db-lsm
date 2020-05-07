@@ -95,6 +95,7 @@ public class LSMDAO implements DAO {
                 memTable.size());
         final File dst = new File(storage, generation + SUFFIX);
         Files.move(file.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        memTable = null;
         memTable = new MemTable();
         ssTables.put(generation, new SSTable(dst));
         generation++;
@@ -104,6 +105,9 @@ public class LSMDAO implements DAO {
     public void close() throws IOException {
         if (memTable.size() > 0) {
             flush();
+        }
+        for (Map.Entry<Integer, Table> entry : ssTables.entrySet()) {
+            entry.getValue().close();
         }
     }
 }
