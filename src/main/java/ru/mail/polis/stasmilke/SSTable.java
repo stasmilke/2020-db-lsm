@@ -154,7 +154,7 @@ final class SSTable implements Table {
                 ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
                 ByteBuffer longBuffer = ByteBuffer.allocate(Long.BYTES);
                 while (iterator.hasNext()) {
-                    if (currentSize != 0) {
+                    if (current != 0) {
                         headerChannel.write(longBuffer.rewind().putLong(currentSize).rewind(), Long.BYTES * (current - 1));
                     }
 
@@ -177,6 +177,7 @@ final class SSTable implements Table {
                         writeChannel.write(cell.getValue().getData(), currentSize);
                         currentSize += valueSize;
                     }
+                    current++;
                 }
                 headerChannel.write(intBuffer.rewind().putInt(size).rewind(), Long.BYTES * (size - 1));
                 writeChannel.transferFrom(headerChannel, currentSize, Long.BYTES * (size - 1) + Integer.BYTES);
