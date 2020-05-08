@@ -1,7 +1,6 @@
 package ru.mail.polis.stasmilke;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.Record;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

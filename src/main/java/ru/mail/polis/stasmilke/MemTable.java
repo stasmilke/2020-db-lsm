@@ -16,8 +16,11 @@ final class MemTable implements Table {
     @NotNull
     @Override
     public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
-        return Iterators.transform(sortedMap.tailMap(from).entrySet().iterator(),
-                x -> new Cell(x.getKey(), x.getValue()));
+        return sortedMap.tailMap(from)
+                .entrySet()
+                .stream()
+                .map(x -> new Cell(x.getKey(), x.getValue()))
+                .iterator();
     }
 
     @Override
