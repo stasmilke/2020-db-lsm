@@ -4,13 +4,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.stream.LongStream;
 
 final class SSTable implements Table {
 
@@ -81,27 +78,26 @@ final class SSTable implements Table {
         return left;
     }
 
-    private long[] offsets(int from) throws IOException {
-        assert from < size;
-        final long[] offsets = new long[size - from];
-        for (int i = 0; i < offsets.length; i++) {
-            offsets[i] = offsetForRow(i + from);
-        }
-        return offsets;
-    }
-
     @NotNull
     @Override
     public Iterator<Cell> iterator(@NotNull ByteBuffer from) throws IOException {
-        int fromPos = binarySearch(from);
-        LongStream offsets = fromPos >= size ? LongStream.empty() : Arrays.stream(offsets(fromPos));
-        return offsets.mapToObj(offset -> {
-            try {
-                return cell(offset);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+        return new Iterator<>() {
+            private int nextRow = binarySearch(from);
+
+            @Override
+            public boolean hasNext() {
+                return nextRow < size;
             }
-        }).iterator();
+
+            @Override
+            public Cell next() {
+                try {
+                    return cell(offsetForRow(nextRow));
+                } catch (IOException e) {
+                    return null;
+                }
+            }
+        };
     }
 
     @Override
@@ -133,51 +129,45 @@ final class SSTable implements Table {
             @NotNull File file,
             Iterator<Cell> iterator,
             int size) throws IOException {
-        File tempFile = new File(file.toString() + "header");
-        try (FileChannel headerChannel = FileChannel.open(
-                tempFile.toPath(),
+        try (FileChannel writeChannel = FileChannel.open(
+                file.toPath(),
                 StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.READ,
-                StandardOpenOption.DELETE_ON_CLOSE
-        )) {
-            try (FileChannel writeChannel = FileChannel.open(
-                    file.toPath(),
-                    StandardOpenOption.CREATE_NEW,
-                    StandardOpenOption.WRITE)) {
-                int current = 0;
-                long currentSize = 0;
-                ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
-                ByteBuffer longBuffer = ByteBuffer.allocate(Long.BYTES);
-                while (iterator.hasNext() && current < size) {
-                    if (current != 0) {
-                        headerChannel.write(longBuffer.rewind().putLong(currentSize).rewind(), Long.BYTES * (current - 1));
-                    }
-
-                    final Cell cell = iterator.next();
-
-                    final int keySize = cell.getKey().remaining();
-                    writeChannel.write(intBuffer.rewind().putInt(keySize).rewind(), currentSize);
-                    currentSize += Integer.BYTES;
-                    writeChannel.write(cell.getKey(), currentSize);
-                    currentSize += keySize;
-
-                    long timestamp =  cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
-                    writeChannel.write(longBuffer.rewind().putLong(timestamp).rewind(), currentSize);
-                    currentSize += Long.BYTES;
-
-                    if (!cell.getValue().isTombstone()) {
-                        final int valueSize = cell.getValue().getData().remaining();
-                        writeChannel.write(intBuffer.rewind().putInt(valueSize).rewind(), currentSize);
-                        currentSize += Integer.BYTES;
-                        writeChannel.write(cell.getValue().getData(), currentSize);
-                        currentSize += valueSize;
-                    }
-                    current++;
+                StandardOpenOption.WRITE)) {
+            final long[] offsets = new long[size - 1];
+            int current = 0;
+            long currentSize = 0;
+            ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
+            ByteBuffer longBuffer = ByteBuffer.allocate(Long.BYTES);
+            while (current < size && iterator.hasNext()) {
+                if (currentSize != 0) {
+                    offsets[current++] = currentSize;
                 }
-                headerChannel.write(intBuffer.rewind().putInt(size).rewind(), Long.BYTES * (size - 1));
-                writeChannel.transferFrom(headerChannel, currentSize, Long.BYTES * (size - 1) + Integer.BYTES);
+
+                final Cell cell = iterator.next();
+
+                final int keySize = cell.getKey().remaining();
+                writeChannel.write(intBuffer.rewind().putInt(keySize).rewind(), currentSize);
+                currentSize += Integer.BYTES;
+                writeChannel.write(cell.getKey(), currentSize);
+                currentSize += keySize;
+
+                long timestamp =  cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
+                writeChannel.write(longBuffer.rewind().putLong(timestamp).rewind(), currentSize);
+                currentSize += Long.BYTES;
+
+                if (!cell.getValue().isTombstone()) {
+                    final int valueSize = cell.getValue().getData().remaining();
+                    writeChannel.write(intBuffer.rewind().putInt(valueSize).rewind(), currentSize);
+                    currentSize += Integer.BYTES;
+                    writeChannel.write(cell.getValue().getData(), currentSize);
+                    currentSize += valueSize;
+                }
             }
+            for (long offset : offsets) {
+                writeChannel.write(longBuffer.rewind().putLong(offset).rewind(), currentSize);
+                currentSize += Long.BYTES;
+            }
+            writeChannel.write(intBuffer.rewind().putInt(size).rewind(), currentSize);
         }
     }
 }
