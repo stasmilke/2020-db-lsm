@@ -15,8 +15,8 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Iterator;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -44,7 +44,6 @@ public class LsmDAO implements DAO {
      *
      * @param storage local disk folder to persist the data to
      * @param flushThreshold max size of {@link MemTable}
-     * @return a storage instance
      */
     public LsmDAO(
             @NotNull final File storage,
@@ -62,7 +61,7 @@ public class LsmDAO implements DAO {
                     generation = Math.max(fileGeneration, generation);
                     ssTables.put(fileGeneration, new SSTable(file.toFile()));
                 } catch (NumberFormatException e) {
-                    logger.warn("Incorrect name in file. %s", file.getFileName().toString());
+                    logger.warn(String.format("Incorrect name in file. %s", file.getFileName().toString()));
                 } catch (IOException e) {
                     logger.warn("IOException in file. %s", e);
                     throw new UncheckedIOException(e);
@@ -107,7 +106,7 @@ public class LsmDAO implements DAO {
     @Override
     public void remove(@NotNull final ByteBuffer key) throws IOException {
         memTable.remove(key);
-//        logger.info("An object has been removed");
+        logger.info("An object has been removed");
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }

@@ -153,7 +153,7 @@ final class SSTable implements Table {
                 writeChannel.write(cell.getKey(), currentSize);
                 currentSize += keySize;
 
-                long timestamp = cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
+                final long timestamp = cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
                 writeChannel.write(longBuffer.rewind().putLong(timestamp).rewind(), currentSize);
                 currentSize += Long.BYTES;
 
@@ -165,7 +165,7 @@ final class SSTable implements Table {
                     currentSize += valueSize;
                 }
             }
-            for (long offset : offsets) {
+            for (final long offset : offsets) {
                 writeChannel.write(longBuffer.rewind().putLong(offset).rewind(), currentSize);
                 currentSize += Long.BYTES;
             }
