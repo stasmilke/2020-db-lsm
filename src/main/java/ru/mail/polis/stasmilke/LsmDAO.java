@@ -97,7 +97,6 @@ public class LsmDAO implements DAO {
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         memTable.upsert(key, value);
-        logger.info("An object has been inserted");
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
@@ -106,7 +105,6 @@ public class LsmDAO implements DAO {
     @Override
     public void remove(@NotNull final ByteBuffer key) throws IOException {
         memTable.remove(key);
-        logger.info("An object has been removed");
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
