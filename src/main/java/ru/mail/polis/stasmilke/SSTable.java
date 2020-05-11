@@ -33,17 +33,19 @@ final class SSTable implements Table {
         return longBuffer.rewind().getLong();
     }
 
-    private ByteBuffer key(long offset) throws IOException {
+    private ByteBuffer key(final long begin) throws IOException {
+        long offset = begin;
         channel.read(intBuffer.rewind(), offset);
 
-        ByteBuffer key = ByteBuffer.allocate(intBuffer.rewind().getInt());
+        final ByteBuffer key = ByteBuffer.allocate(intBuffer.rewind().getInt());
         offset += Integer.BYTES;
         channel.read(key, offset);
         return key.rewind();
     }
 
-    private Cell cell(long offset) throws IOException {
-        ByteBuffer key = key(offset);
+    private Cell cell(final long begin) throws IOException {
+        long offset = begin;
+        final ByteBuffer key = key(offset);
         offset += key.remaining() + Integer.BYTES;
         channel.read(longBuffer.rewind(), offset);
         final long timestamp = longBuffer.rewind().getLong();
@@ -53,7 +55,7 @@ final class SSTable implements Table {
         }
 
         channel.read(intBuffer.rewind(), offset);
-        ByteBuffer value = ByteBuffer.allocate(intBuffer.rewind().getInt());
+        final ByteBuffer value = ByteBuffer.allocate(intBuffer.rewind().getInt());
         offset += Integer.BYTES;
         channel.read(value, offset);
         return new Cell(key, new Value(value.rewind(), timestamp));
@@ -63,9 +65,9 @@ final class SSTable implements Table {
         int left = 0;
         int right = size - 1;
 
-        while(left <= right) {
-            int mid = (left + right) / 2;
-            int comp = from.compareTo(key(offsetForRow(mid)));
+        while (left <= right) {
+            final int mid = (left + right) / 2;
+            final int comp = from.compareTo(key(offsetForRow(mid)));
             if (comp < 0) {
                 right = mid - 1;
             } else if (comp > 0) {
@@ -80,7 +82,7 @@ final class SSTable implements Table {
 
     @NotNull
     @Override
-    public Iterator<Cell> iterator(@NotNull ByteBuffer from) throws IOException {
+    public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
         return new Iterator<>() {
             private int nextRow = binarySearch(from);
 
@@ -92,7 +94,7 @@ final class SSTable implements Table {
             @Override
             public Cell next() {
                 try {
-                    return cell(offsetForRow(nextRow));
+                    return cell(offsetForRow(nextRow++));
                 } catch (IOException e) {
                     return null;
                 }
@@ -101,12 +103,12 @@ final class SSTable implements Table {
     }
 
     @Override
-    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) throws IOException {
+    public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
-    public void remove(@NotNull ByteBuffer key) throws IOException {
+    public void remove(@NotNull final ByteBuffer key) throws IOException {
         throw new UnsupportedOperationException("not implemented");
     }
 
@@ -126,9 +128,9 @@ final class SSTable implements Table {
     }
 
     static void serialize(
-            @NotNull File file,
-            Iterator<Cell> iterator,
-            int size) throws IOException {
+            @NotNull final File file,
+            final Iterator<Cell> iterator,
+            final int size) throws IOException {
         try (FileChannel writeChannel = FileChannel.open(
                 file.toPath(),
                 StandardOpenOption.CREATE_NEW,
@@ -136,8 +138,8 @@ final class SSTable implements Table {
             final long[] offsets = new long[size - 1];
             int current = 0;
             long currentSize = 0;
-            ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
-            ByteBuffer longBuffer = ByteBuffer.allocate(Long.BYTES);
+            final ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
+            final ByteBuffer longBuffer = ByteBuffer.allocate(Long.BYTES);
             while (current < size && iterator.hasNext()) {
                 if (currentSize != 0) {
                     offsets[current++] = currentSize;
@@ -151,7 +153,7 @@ final class SSTable implements Table {
                 writeChannel.write(cell.getKey(), currentSize);
                 currentSize += keySize;
 
-                long timestamp =  cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
+                long timestamp = cell.getValue().getTimestamp() * (cell.getValue().isTombstone() ? -1 : 1);
                 writeChannel.write(longBuffer.rewind().putLong(timestamp).rewind(), currentSize);
                 currentSize += Long.BYTES;
 

@@ -15,8 +15,8 @@ final class Cell {
             Comparator.comparing(Cell::getKey).thenComparing(Cell::getValue);
 
     public Cell(
-                @NotNull ByteBuffer key,
-                @NotNull Value value) {
+                @NotNull final ByteBuffer key,
+                @NotNull final Value value) {
         this.key = key;
         this.value = value;
     }

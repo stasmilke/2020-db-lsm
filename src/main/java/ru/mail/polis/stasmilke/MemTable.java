@@ -1,6 +1,5 @@
 package ru.mail.polis.stasmilke;
 
-import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -11,7 +10,7 @@ import java.util.TreeMap;
 
 final class MemTable implements Table {
     private final SortedMap<ByteBuffer, Value> sortedMap = new TreeMap<>();
-    private long sizeInBytes = 0L;
+    private long sizeInBytes;
 
     @NotNull
     @Override
@@ -27,10 +26,10 @@ final class MemTable implements Table {
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         final Value oldValue = sortedMap.get(key);
         final Value newValue = new Value(value, System.currentTimeMillis());
-        if (oldValue != null) {
-            sizeInBytes -= oldValue.sizeInBytes();
-        } else {
+        if (oldValue == null) {
             sizeInBytes += key.remaining();
+        } else {
+            sizeInBytes -= oldValue.sizeInBytes();
         }
         sizeInBytes += newValue.sizeInBytes();
         sortedMap.put(key, newValue);

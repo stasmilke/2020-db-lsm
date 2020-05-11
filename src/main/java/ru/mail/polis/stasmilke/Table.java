@@ -18,6 +18,8 @@ public interface Table {
     void remove(@NotNull ByteBuffer key) throws IOException;
 
     int size();
+
     long sizeInBytes() throws IOException;
+
     void close() throws IOException;
 }
