@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -96,7 +97,7 @@ final class SSTable implements Table {
                 try {
                     return cell(offsetForRow(nextRow++));
                 } catch (IOException e) {
-                    return null;
+                    throw new UncheckedIOException(e);
                 }
             }
         };

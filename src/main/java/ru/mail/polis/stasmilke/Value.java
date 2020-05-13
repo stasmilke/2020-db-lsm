@@ -12,7 +12,7 @@ final class Value implements Comparable<Value> {
 
     Value(@Nullable final ByteBuffer data, final long timestamp) {
         assert timestamp > 0L;
-        this.data = Optional.of(data);
+        this.data = Optional.ofNullable(data);
         this.timestamp = timestamp;
     }
 

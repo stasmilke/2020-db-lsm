@@ -79,7 +79,7 @@ public class LsmDAO implements DAO {
         ssTables.descendingMap().values().forEach(t -> {
             try {
                 iterators.add(t.iterator(from));
-                logger.debug("iterator added");
+                logger.debug("Iterator added");
             } catch (IOException e) {
                 logger.warn("Error in iterators: %s", e);
                 throw new RuntimeException("Error", e);
