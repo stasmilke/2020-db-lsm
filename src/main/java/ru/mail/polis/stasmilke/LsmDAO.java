@@ -114,8 +114,8 @@ public class LsmDAO implements DAO {
         final File file = new File(storage, generation + TEMP);
         SSTable.serialize(
                 file,
-                memTable.iterator(ByteBuffer.allocate(0)),
-                memTable.size());
+                memTable.iterator(ByteBuffer.allocate(0))
+        );
         final File dst = new File(storage, generation + SUFFIX);
         Files.move(file.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
         memTable = new MemTable();
