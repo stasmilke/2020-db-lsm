@@ -146,15 +146,15 @@ public class LsmDAO implements DAO {
                 tempFile,
                 cellIterator(ByteBuffer.allocate(0))
         );
-        for (int i = 0; i < generation; i++) {
-            new File(storage.toString(), i + SUFFIX).delete();
+        for (int i = 1; i < generation; i++) {
+            Files.delete(Path.of(storage.toString() + "/" + i + SUFFIX));
         }
-        final File dst = new File(storage, 0 + SUFFIX);
+        final File dst = new File(storage, 1 + SUFFIX);
         Files.move(tempFile.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
         ssTables.clear();
-        ssTables.put(0, new SSTable(dst));
+        ssTables.put(1, new SSTable(dst));
         memTable = new MemTable();
-        generation = 1;
-        logger.info(String.format("Table has been compacted"));
+        generation = 2;
+        logger.info("Table has been compacted");
     }
 }

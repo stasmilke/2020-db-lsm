@@ -8,12 +8,11 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.Iterator;
 
 final class SSTable implements Table {
 
-    private final static String HEADER_TEMP = "header.tmp";
+    private static final String HEADER_TEMP = "header.tmp";
     @NotNull
     private final FileChannel channel;
     private final int size;
