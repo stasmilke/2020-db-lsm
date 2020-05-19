@@ -2,7 +2,6 @@ package ru.mail.polis.stasmilke;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.DAO;
@@ -163,11 +162,11 @@ public class LsmDAO implements DAO {
         logger.info("Table has been compacted");
     }
 
-    private String nameForGeneration(int gen, boolean isTemp) {
+    private String nameForGeneration(final int gen, final boolean isTemp) {
         return storage.toString() + "/" + gen + (isTemp ? TEMP : SUFFIX);
     }
 
-    private File fileForGeneration(int gen, boolean isTemp) {
+    private File fileForGeneration(final int gen, final boolean isTemp) {
         return new File(nameForGeneration(gen, isTemp));
     }
 }
