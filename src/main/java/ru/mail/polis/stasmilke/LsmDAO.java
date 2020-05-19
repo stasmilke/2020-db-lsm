@@ -2,6 +2,7 @@ package ru.mail.polis.stasmilke;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.DAO;
@@ -116,12 +117,16 @@ public class LsmDAO implements DAO {
     }
 
     private void flush() throws IOException {
-        final File file = new File(storage, generation + TEMP);
+        if (generation > 100) {
+            compact();
+            return;
+        }
+        final File file = fileForGeneration(generation, true);
         SSTable.serialize(
                 file,
                 memTable.iterator(ByteBuffer.allocate(0))
         );
-        final File dst = new File(storage, generation + SUFFIX);
+        final File dst = fileForGeneration(generation, false);
         Files.move(file.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
         memTable = new MemTable();
         ssTables.put(generation, new SSTable(dst));
@@ -140,21 +145,29 @@ public class LsmDAO implements DAO {
     }
 
     @Override
-    public synchronized void compact() throws IOException {
+    public void compact() throws IOException {
         final File tempFile = new File(storage, COMPACT);
         SSTable.serialize(
                 tempFile,
                 cellIterator(ByteBuffer.allocate(0))
         );
         for (int i = 1; i < generation; i++) {
-            Files.delete(Path.of(storage.toString() + "/" + i + SUFFIX));
+            Files.delete(fileForGeneration(i, false).toPath());
         }
-        final File dst = new File(storage, 1 + SUFFIX);
+        final File dst = fileForGeneration(1, false);
         Files.move(tempFile.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
         ssTables.clear();
         ssTables.put(1, new SSTable(dst));
         memTable = new MemTable();
         generation = 2;
         logger.info("Table has been compacted");
+    }
+
+    private String nameForGeneration(int gen, boolean isTemp) {
+        return storage.toString() + "/" + gen + (isTemp ? TEMP : SUFFIX);
+    }
+
+    private File fileForGeneration(int gen, boolean isTemp) {
+        return new File(nameForGeneration(gen, isTemp));
     }
 }
