@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 public class LsmDAO implements DAO {
     private static final String SUFFIX = ".dat";
     private static final String TEMP = ".temp";
+    private static final String COMPACT = "compact.temp";
 
     @NotNull
     private final File storage;
@@ -74,6 +75,13 @@ public class LsmDAO implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
+        // Removed tombstones
+        final Iterator<Cell> alive = Iterators.filter(cellIterator(from), e -> !e.getValue().isTombstone());
+        return Iterators.transform(alive, e -> Record.of(e.getKey(), e.getValue().getData()));
+    }
+
+    @NotNull
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) throws IOException {
         final List<Iterator<Cell>> iterators = new ArrayList<>(ssTables.size() + 1);
         iterators.add(memTable.iterator(from));
         ssTables.descendingMap().values().forEach(t -> {
@@ -88,10 +96,7 @@ public class LsmDAO implements DAO {
         // Sorted duplicates and tombstones
         final Iterator<Cell> merged = Iterators.mergeSorted(iterators, Cell.COMPARATOR);
         // One cell per key
-        final Iterator<Cell> fresh = Iters.collapseEquals(merged, Cell::getKey);
-        // Removed tombstones
-        final Iterator<Cell> alive = Iterators.filter(fresh, e -> !e.getValue().isTombstone());
-        return Iterators.transform(alive, e -> Record.of(e.getKey(), e.getValue().getData()));
+        return Iters.collapseEquals(merged, Cell::getKey);
     }
 
     @Override
@@ -132,5 +137,24 @@ public class LsmDAO implements DAO {
         for (final Map.Entry<Integer, Table> entry : ssTables.entrySet()) {
             entry.getValue().close();
         }
+    }
+
+    @Override
+    public synchronized void compact() throws IOException {
+        final File tempFile = new File(storage, COMPACT);
+        SSTable.serialize(
+                tempFile,
+                cellIterator(ByteBuffer.allocate(0))
+        );
+        for (int i = 0; i < generation; i++) {
+            new File(storage.toString(), i + SUFFIX).delete();
+        }
+        final File dst = new File(storage, 0 + SUFFIX);
+        Files.move(tempFile.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        ssTables.clear();
+        ssTables.put(0, new SSTable(dst));
+        memTable = new MemTable();
+        generation = 1;
+        logger.info(String.format("Table has been compacted"));
     }
 }
