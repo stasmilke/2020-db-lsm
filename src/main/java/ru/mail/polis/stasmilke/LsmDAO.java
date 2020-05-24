@@ -76,14 +76,16 @@ public class LsmDAO implements DAO {
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
         // Removed tombstones
-        final Iterator<Cell> alive = Iterators.filter(cellIterator(from), e -> !e.getValue().isTombstone());
+        final Iterator<Cell> alive = Iterators.filter(cellIterator(from, true), e -> !e.getValue().isTombstone());
         return Iterators.transform(alive, e -> Record.of(e.getKey(), e.getValue().getData()));
     }
 
     @NotNull
-    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) throws IOException {
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from, final boolean addMemTable) throws IOException {
         final List<Iterator<Cell>> iterators = new ArrayList<>(ssTables.size() + 1);
-        iterators.add(memTable.iterator(from));
+        if (addMemTable) {
+            iterators.add(memTable.iterator(from));
+        }
         ssTables.descendingMap().values().forEach(t -> {
             try {
                 iterators.add(t.iterator(from));
@@ -105,6 +107,9 @@ public class LsmDAO implements DAO {
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
+        if (generation > 100) {
+            compact();
+        }
     }
 
     @Override
@@ -113,13 +118,12 @@ public class LsmDAO implements DAO {
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
+        if (generation > 100) {
+            compact();
+        }
     }
 
     private void flush() throws IOException {
-        if (generation > 100) {
-            compact();
-            return;
-        }
         final File file = fileForGeneration(generation, true);
         SSTable.serialize(
                 file,
@@ -138,6 +142,9 @@ public class LsmDAO implements DAO {
         if (memTable.size() > 0) {
             flush();
         }
+        if (generation > 100) {
+            compact();
+        }
         for (final Map.Entry<Integer, Table> entry : ssTables.entrySet()) {
             entry.getValue().close();
         }
@@ -148,7 +155,7 @@ public class LsmDAO implements DAO {
         final File tempFile = new File(storage, COMPACT);
         SSTable.serialize(
                 tempFile,
-                cellIterator(ByteBuffer.allocate(0))
+                cellIterator(ByteBuffer.allocate(0), false)
         );
         for (int i = 1; i < generation; i++) {
             Files.delete(fileForGeneration(i, false).toPath());
@@ -157,7 +164,6 @@ public class LsmDAO implements DAO {
         Files.move(tempFile.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE);
         ssTables.clear();
         ssTables.put(1, new SSTable(dst));
-        memTable = new MemTable();
         generation = 2;
         logger.info("Table has been compacted");
     }
