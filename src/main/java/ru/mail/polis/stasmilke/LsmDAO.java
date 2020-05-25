@@ -30,6 +30,7 @@ public class LsmDAO implements DAO {
     private static final String SUFFIX = ".dat";
     private static final String TEMP = ".temp";
     private static final String COMPACT = "compact.temp";
+    private static final int SSTABLES_LIMIT = 100;
 
     @NotNull
     private final File storage;
@@ -107,7 +108,7 @@ public class LsmDAO implements DAO {
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
-        if (generation > 100) {
+        if (generation > SSTABLES_LIMIT) {
             compact();
         }
     }
@@ -118,7 +119,7 @@ public class LsmDAO implements DAO {
         if (memTable.sizeInBytes() > flushThreshold) {
             flush();
         }
-        if (generation > 100) {
+        if (generation > SSTABLES_LIMIT) {
             compact();
         }
     }
@@ -141,9 +142,6 @@ public class LsmDAO implements DAO {
     public void close() throws IOException {
         if (memTable.size() > 0) {
             flush();
-        }
-        if (generation > 100) {
-            compact();
         }
         for (final Map.Entry<Integer, Table> entry : ssTables.entrySet()) {
             entry.getValue().close();
